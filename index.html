@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nimm-Spiel - Lernende KI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            color: white;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .info-box h3 {
+            font-size: 1em;
+            margin-bottom: 5px;
+        }
+
+        .info-box .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+
+        .balls-container {
+            margin: 20px 0;
+            min-height: 250px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 30px 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balls-canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            border-radius: 15px;
+            z-index: 1;
+        }
+
+        .balls-canvas.foreground {
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .balls-pile {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 3px;
+            padding: 20px;
+            min-height: 200px;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            z-index: 2;
+        }
+
+        .ball {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff8a80, #ff5722, #d84315);
+            box-shadow: 
+                0 4px 8px rgba(0, 0, 0, 0.4),
+                inset -2px -2px 4px rgba(0, 0, 0, 0.3),
+                inset 2px 2px 4px rgba(255, 255, 255, 0.2);
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+        .ball::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 10px;
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+        }
+
+        .ball.removing {
+            animation: ballRemove 0.6s ease-in-out forwards;
+        }
+
+        @keyframes ballRemove {
+            0% { 
+                transform: scale(1) rotate(0deg); 
+                opacity: 1; 
+            }
+            50% { 
+                transform: scale(1.3) rotate(180deg); 
+                opacity: 0.8; 
+            }
+            100% { 
+                transform: scale(0) rotate(360deg); 
+                opacity: 0; 
+            }
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .take-button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 15px 10px;
+            font-size: 1.1em;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            min-height: 80px;
+            justify-content: center;
+        }
+
+        .take-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .take-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .take-button:disabled {
+            background: linear-gradient(135deg, #666, #555);
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        .take-button .count {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .take-button .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .secondary-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            font-size: 1em;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .status {
+            font-size: 1.2em;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .ai-thinking {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .ai-thinking::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 33% { content: '.'; }
+            34%, 66% { content: '..'; }
+            67%, 100% { content: '...'; }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .learning-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(76, 175, 80, 0.8);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            animation: glow 2s ease-in-out infinite alternate;
+            display: none;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
+            to { box-shadow: 0 0 15px rgba(76, 175, 80, 0.8); }
+        }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .footer-link a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 0.9em;
+            transition: color 0.3s;
+        }
+
+        .footer-link a:hover {
+            color: #ffeb3b;
+        }
+
+        /* Siegesfeier Animation */
+        .victory-celebration {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2000;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ffeb3b;
+            animation: confettiFall 3s linear forwards;
+        }
+
+        .confetti:nth-child(2n) { background: #4CAF50; }
+        .confetti:nth-child(3n) { background: #2196F3; }
+        .confetti:nth-child(4n) { background: #ff6b6b; }
+        .confetti:nth-child(5n) { background: #9c27b0; }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .victory-message {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: victoryPulse 0.6s ease-in-out;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .defeat-message {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: victoryPulse 0.6s ease-in-out;
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        @keyframes victoryPulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 15px 40px rgba(76, 175, 80, 0.4);
+            }
+        }
+
+        /* Responsive Design für sehr kleine Bildschirme */
+        @media (max-width: 400px) {
+            .game-container {
+                padding: 15px;
+                margin-top: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .ball {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .take-button {
+                padding: 12px 8px;
+                font-size: 1em;
+                min-height: 70px;
+            }
+            
+            .take-button .count {
+                font-size: 1.3em;
+            }
+
+            .balls-canvas {
+                width: 200px;
+                height: 200px;
+            }
+        }
+
+        /* Landscape Mode für Handys */
+        @media (max-height: 600px) and (orientation: landscape) {
+            body {
+                align-items: center;
+            }
+            
+            .game-container {
+                margin-top: 10px;
+            }
+            
+            .balls-container {
+                min-height: 150px;
+                padding: 20px 15px;
+            }
+            
+            .balls-pile {
+                min-height: 120px;
+                padding: 15px;
+            }
+            
+            .controls {
+                margin: 15px 0 10px 0;
+            }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            color: #333;
+            position: relative;
+            animation: modalAppear 0.3s ease-out;
+        }
+
+        @keyframes modalAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .modal h2 {
+            color: #2196F3;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8em;
+        }
+
+        .modal p, .modal ul {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .modal ul {
+            padding-left: 20px;
+        }
+
+        .modal li {
+            margin-bottom: 8px;
+        }
+
+        .close {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="learning-indicator">🧠 KI lernt...</div>
+        
+        <h1>🎯 Nimm-Spiel</h1>
+        <p class="subtitle">Intelligente KI die aus jedem Spiel lernt</p>
+        
+        <div class="game-info">
+            <div class="info-box">
+                <h3>Kugeln übrig</h3>
+                <div class="value" id="ballCount">31</div>
+            </div>
+            <div class="info-box">
+                <h3>Am Zug</h3>
+                <div class="value" id="currentPlayer">Du</div>
+            </div>
+        </div>
+
+        <div class="balls-container">
+            <canvas class="balls-canvas" id="backgroundCanvas" width="250" height="250"></canvas>
+            <div class="balls-pile" id="ballsPile"></div>
+            <canvas class="balls-canvas foreground" id="foregroundCanvas" width="250" height="250"></canvas>
+        </div>
+
+        <div class="controls">
+            <button class="take-button" onclick="takeBalls(1)" id="take1" disabled>
+                <div class="count">1</div>
+                <div class="label">Kugel</div>
+            </button>
+            <button class="take-button" onclick="takeBalls(2)" id="take2" disabled>
+                <div class="count">2</div>
+                <div class="label">Kugeln</div>
+            </button>
+            <button class="take-button" onclick="takeBalls(3)" id="take3" disabled>
+                <div class="count">3</div>
+                <div class="label">Kugeln</div>
+            </button>
+        </div>
+
+        <div class="status" id="gameStatus">
+            Wähle 1, 2 oder 3 Kugeln
+        </div>
+
+        <div class="secondary-controls">
+            <button class="button" onclick="resetGame()">
+                🔄 Neues Spiel
+            </button>
+            <button class="button" onclick="showRules()">
+                📋 Regeln
+            </button>
+            <button class="button" onclick="toggleSound()" id="soundButton">
+                🔊 Sound
+            </button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <strong>Deine Siege:</strong> <span id="playerWins">0</span>
+            </div>
+            <div class="stat-item">
+                <strong>KI Siege:</strong> <span id="aiWins">0</span>
+            </div>
+            <div class="stat-item">
+                <strong>Spiele:</strong> <span id="totalGames">0</span>
+            </div>
+            <div class="stat-item">
+                <strong>KI Level:</strong> <span id="aiIntelligence">Anfänger</span>
+            </div>
+        </div>
+
+        <div class="footer-link">
+            <a href="https://spiele.frank-kemper.com/index.php#rechtliches" target="_blank">
+                Datenschutz & Impressum
+            </a>
+        </div>
+    </div>
+
+    <!-- Modal für Regeln -->
+    <div id="rulesModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRules()">&times;</span>
+            <h2>🎯 Spielregeln</h2>
+            
+            <p><strong>Ziel des Spiels:</strong><br>
+            Zwinge deinen Gegner dazu, die letzte Kugel zu nehmen!</p>
+            
+            <p><strong>Spielablauf:</strong></p>
+            <ul>
+                <li>Das Spiel beginnt mit <strong>31 Kugeln</strong></li>
+                <li>Du und die KI nehmen <strong>abwechselnd</strong> Kugeln weg</li>
+                <li>Pro Zug kannst du <strong>1, 2 oder 3 Kugeln</strong> nehmen</li>
+                <li><strong>Wer die letzte Kugel nehmen muss, verliert!</strong></li>
+            </ul>
+            
+            <p><strong>Strategie-Tipp:</strong><br>
+            Versuche, deinem Gegner immer Vielfache von 4 zu hinterlassen (4, 8, 12, 16, 20, 24, 28). Dann bist du in einer Gewinnposition!</p>
+            
+            <p><strong>Die KI lernt:</strong><br>
+            Die künstliche Intelligenz wird mit jedem Spiel besser und entwickelt eigene Strategien. Anfangs spielt sie zufällig, aber schon bald wird sie zu einem ernsthaften Gegner!</p>
+        </div>
+    </div>
+
+    <script>
+        class NimmGame {
+            constructor() {
+                this.balls = 31;
+                this.isPlayerTurn = true;
+                this.gameOver = false;
+                this.playerWins = 0;
+                this.aiWins = 0;
+                this.totalGames = 0;
+                this.soundEnabled = true;
+                
+                // KI Lernsystem - Q-Table für verschiedene Spielzustände
+                this.qTable = this.loadQTable();
+                this.lastState = null;
+                this.lastAction = null;
+                this.learningRate = 0.1;
+                this.discountFactor = 0.9;
+                this.explorationRate = 0.3; // Anfangs explorativ
+                
+                this.initializeGame();
+                this.loadStats();
+                this.loadImages();
+            }
+
+            // Lade gespeicherte Q-Table oder erstelle neue
+            loadQTable() {
+                const saved = JSON.parse(localStorage.getItem('nimmGameQTable') || '{}');
+                return saved;
+            }
+
+            // Speichere Q-Table
+            saveQTable() {
+                localStorage.setItem('nimmGameQTable', JSON.stringify(this.qTable));
+            }
+
+            // Lade Spielstatistiken
+            loadStats() {
+                const stats = JSON.parse(localStorage.getItem('nimmGameStats') || '{}');
+                this.playerWins = stats.playerWins || 0;
+                this.aiWins = stats.aiWins || 0;
+                this.totalGames = stats.totalGames || 0;
+                this.updateDisplay();
+            }
+
+            // Speichere Spielstatistiken
+            saveStats() {
+                const stats = {
+                    playerWins: this.playerWins,
+                    aiWins: this.aiWins,
+                    totalGames: this.totalGames
+                };
+                localStorage.setItem('nimmGameStats', JSON.stringify(stats));
+            }
+
+            // Spiel initialisieren
+            initializeGame() {
+                this.balls = 31;
+                this.isPlayerTurn = true;
+                this.gameOver = false;
+                this.lastState = null;
+                this.lastAction = null;
+                
+                this.createBallsPile();
+                this.updateDisplay();
+                this.playSound('start');
+            }
+
+            // Kugelhaufen erstellen - pyramidenförmig arrangiert
+            createBallsPile() {
+                const container = document.getElementById('ballsPile');
+                container.innerHTML = '';
+                
+                // Berechne Pyramidenstruktur
+                const maxRowSize = Math.ceil(Math.sqrt(this.balls * 2));
+                let ballsPlaced = 0;
+                let row = 0;
+                
+                while (ballsPlaced < this.balls) {
+                    const ballsInRow = Math.min(maxRowSize - row, this.balls - ballsPlaced);
+                    if (ballsInRow <= 0) break;
+                    
+                    for (let i = 0; i < ballsInRow; i++) {
+                        const ball = document.createElement('div');
+                        ball.className = 'ball';
+                        ball.id = `ball-${ballsPlaced + i + 1}`;
+                        
+                        // Pyramiden-Positionierung
+                        const centerOffset = (ballsInRow - 1) * 12; // 18px Abstand zwischen Kugeln
+                        const x = i * 24 - centerOffset; // 36 = doppelter Abstand
+                        const y = row * 15; // 30 Höhenversatz zwischen Reihen
+                        
+                        ball.style.position = 'absolute';
+                        ball.style.left = `calc(50% + ${x}px)`;
+                        ball.style.bottom = `${30 + y}px`; // Grundabstand vom Boden
+                        ball.style.zIndex = 100 - row; // Untere Reihen im Vordergrund
+                        ball.style.transform = 'translateX(-50%)';
+                        
+                        // Leichte zufällige Variation für natürlicheren Look
+                        const randomX = (Math.random() - 0.5) * 4;
+                        const randomY = (Math.random() - 0.5) * 3;
+                        ball.style.left = `calc(50% + ${x + randomX}px)`;
+                        ball.style.bottom = `${30 + y + randomY}px`;
+                        
+                        container.appendChild(ball);
+                    }
+                    
+                    ballsPlaced += ballsInRow;
+                    row++;
+                }
+            }
+
+            // Kugeln nehmen
+            takeBalls(count) {
+                if (!this.isPlayerTurn || this.gameOver || count > this.balls) return;
+
+                this.removeBalls(count, 'player');
+            }
+
+            // Kugeln entfernen
+            removeBalls(count, player) {
+                this.playSound('remove');
+                
+                // Animation für entfernte Kugeln - nimm die obersten
+                const balls = document.querySelectorAll('.ball');
+                const ballsToRemove = Array.from(balls).slice(-count);
+                
+                ballsToRemove.forEach((ball, index) => {
+                    setTimeout(() => {
+                        ball.classList.add('removing');
+                    }, index * 100);
+                });
+
+                setTimeout(() => {
+                    this.balls -= count;
+                    this.updateDisplay();
+                    
+                    if (this.balls <= 0) {
+    this.endGame(player);
+} else {
+    this.createBallsPile();
+    // Spielerwechsel nur wenn Spiel weitergeht
+    if (player === 'player') {
+        this.isPlayerTurn = false;
+        setTimeout(() => this.aiMove(), 1000);
+    } else {
+        this.isPlayerTurn = true;
+        this.updateDisplay(); // Status aktualisieren nach KI-Zug
+    }
+}
+                }, 600);
+            }
+
+            // KI Zug
+            aiMove() {
+                if (this.gameOver) return;
+
+                document.getElementById('gameStatus').innerHTML = 
+                    '<span class="ai-thinking">KI überlegt</span>';
+
+                // Deaktiviere Buttons während KI-Zug
+                this.updateButtonStates(false);
+
+                setTimeout(() => {
+                    const state = this.getGameState();
+                    const action = this.chooseAction(state);
+                    
+                    // Speichere Zustand und Aktion für Lernen
+                    this.lastState = state;
+                    this.lastAction = action;
+                    
+                    this.removeBalls(action, 'ai');
+                }, 1500);
+            }
+
+            // Aktueller Spielzustand
+            getGameState() {
+                return this.balls;
+            }
+
+            // Wähle Aktion basierend auf Q-Table
+            chooseAction(state) {
+                const possibleActions = [1, 2, 3].filter(action => action <= this.balls);
+                
+                // Exploration vs Exploitation
+                if (Math.random() < this.explorationRate) {
+                    // Zufällige Aktion (Exploration)
+                    return possibleActions[Math.floor(Math.random() * possibleActions.length)];
+                }
+                
+                // Beste bekannte Aktion (Exploitation)
+                let bestAction = possibleActions[0];
+                let bestValue = this.getQValue(state, bestAction);
+                
+                for (const action of possibleActions) {
+                    const qValue = this.getQValue(state, action);
+                    if (qValue > bestValue) {
+                        bestValue = qValue;
+                        bestAction = action;
+                    }
+                }
+                
+                return bestAction;
+            }
+
+            // Q-Wert abrufen
+            getQValue(state, action) {
+                const key = `${state}-${action}`;
+                return this.qTable[key] || 0;
+            }
+
+            // Q-Wert setzen
+            setQValue(state, action, value) {
+                const key = `${state}-${action}`;
+                this.qTable[key] = value;
+            }
+
+            // Q-Learning Update
+            updateQValue(reward) {
+                if (this.lastState === null || this.lastAction === null) return;
+
+                const currentQ = this.getQValue(this.lastState, this.lastAction);
+                const maxNextQ = this.getMaxQValue(this.balls);
+                
+                const newQ = currentQ + this.learningRate * 
+                    (reward + this.discountFactor * maxNextQ - currentQ);
+                
+                this.setQValue(this.lastState, this.lastAction, newQ);
+                this.saveQTable();
+                
+                // Reduziere Exploration über Zeit
+                this.explorationRate = Math.max(0.1, this.explorationRate * 0.995);
+            }
+
+            // Maximaler Q-Wert für einen Zustand
+            getMaxQValue(state) {
+                const possibleActions = [1, 2, 3].filter(action => action <= state);
+                let maxQ = -Infinity;
+                
+                for (const action of possibleActions) {
+                    maxQ = Math.max(maxQ, this.getQValue(state, action));
+                }
+                
+                return maxQ === -Infinity ? 0 : maxQ;
+            }
+
+            // Button-Zustände aktualisieren
+            updateButtonStates(enabled = true) {
+                for (let i = 1; i <= 3; i++) {
+                    const button = document.getElementById(`take${i}`);
+                    button.disabled = !enabled || !this.isPlayerTurn || 
+                                     this.gameOver || i > this.balls;
+                }
+            }
+
+            // Spiel beenden
+            endGame(lastPlayer) {
+                this.gameOver = true;
+                this.totalGames++;
+                
+                let winner, reward;
+                
+                if (lastPlayer === 'player') {
+                    // Spieler hat letzte Kugel genommen - KI gewinnt
+                    winner = 'KI';
+                    this.aiWins++;
+                    reward = 1; // Positive Belohnung für KI
+                    this.playSound('lose');
+                    document.getElementById('gameStatus').innerHTML = 
+                        `<span class="defeat-message">😔 Die KI hat gewonnen! 🤖</span>`;
+                } else {
+                    // KI hat letzte Kugel genommen - Spieler gewinnt
+                    winner = 'Spieler';
+                    this.playerWins++;
+                    reward = -1; // Negative Belohnung für KI
+                    this.playSound('win');
+                    this.showVictoryCelebration();
+                    document.getElementById('gameStatus').innerHTML = 
+                        `<span class="victory-message">🎉 Gratulation! Du hast gewonnen! 🎉</span>`;
+                }
+
+                // Q-Learning Update
+                this.updateQValue(reward);
+                
+                this.saveStats();
+                this.updateDisplay();
+            }
+
+            // Siegesfeier anzeigen
+            showVictoryCelebration() {
+                // Konfetti erstellen
+                const celebration = document.createElement('div');
+                celebration.className = 'victory-celebration';
+                
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.animationDelay = Math.random() * 3 + 's';
+                    confetti.style.animationDuration = (2 + Math.random() * 3) + 's';
+                    celebration.appendChild(confetti);
+                }
+                
+                document.body.appendChild(celebration);
+                
+                // Entferne Konfetti nach Animation
+                setTimeout(() => {
+                    document.body.removeChild(celebration);
+                }, 4000);
+            }
+
+            // Display aktualisieren
+            updateDisplay() {
+                document.getElementById('ballCount').textContent = this.balls;
+                document.getElementById('currentPlayer').textContent = 
+                    this.gameOver ? '-' : (this.isPlayerTurn ? 'Du' : 'KI');
+                document.getElementById('playerWins').textContent = this.playerWins;
+                document.getElementById('aiWins').textContent = this.aiWins;
+                document.getElementById('totalGames').textContent = this.totalGames;
+                
+                // KI Intelligenz Level
+                const intelligenceLevel = this.getIntelligenceLevel();
+                document.getElementById('aiIntelligence').textContent = intelligenceLevel;
+                
+              // Lern-Indikator nur anzeigen wenn KI schon gespielt hat
+const learningIndicator = document.querySelector('.learning-indicator');
+if (this.totalGames > 0 && Object.keys(this.qTable).length > 0) {
+    learningIndicator.style.display = 'block';
+} else {
+    learningIndicator.style.display = 'none';
+}
+                
+                // Button-Zustände aktualisieren
+                this.updateButtonStates();
+                
+                // Status Text
+                if (!this.gameOver && this.isPlayerTurn) {
+                    document.getElementById('gameStatus').textContent = 
+                        'Wähle 1, 2 oder 3 Kugeln';
+                }
+            }
+
+            // KI Intelligenz Level berechnen
+            getIntelligenceLevel() {
+                const qTableSize = Object.keys(this.qTable).length;
+                if (qTableSize < 10) return 'Anfänger';
+                if (qTableSize < 30) return 'Lernend';
+                if (qTableSize < 60) return 'Fortgeschritten';
+                return 'Experte';
+            }
+
+            // Sound abspielen
+            playSound(type) {
+                if (!this.soundEnabled) return;
+                
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    let frequency, duration;
+                    switch (type) {
+                        case 'remove':
+                            frequency = 400;
+                            duration = 0.3;
+                            break;
+                        case 'win':
+                            frequency = 600;
+                            duration = 0.5;
+                            break;
+                        case 'lose':
+                            frequency = 200;
+                            duration = 0.5;
+                            break;
+                        case 'start':
+                            frequency = 440;
+                            duration = 0.2;
+                            break;
+                    }
+                    
+                    oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                    
+                    oscillator.start();
+                    oscillator.stop(audioContext.currentTime + duration);
+                } catch (error) {
+                    // Audio wird nicht unterstützt, stumm weiterspielen
+                }
+            }
+
+            // Sound umschalten
+            toggleSound() {
+                this.soundEnabled = !this.soundEnabled;
+                document.getElementById('soundButton').textContent = 
+                    this.soundEnabled ? '🔊 Sound' : '🔇 Stumm';
+            }
+
+            // Neues Spiel
+            resetGame() {
+                this.initializeGame();
+            }
+
+            // Bilder laden
+            loadImages() {
+                this.loadBackgroundImage();
+                this.loadForegroundImage();
+            }
+
+            // Hintergrundbild laden
+            loadBackgroundImage() {
+                const canvas = document.getElementById('backgroundCanvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = 0.0;  // Hier die Transparenz ändern (0.0 - 1.0)
+                    ctx.drawImage(img, 0, 0, 250, 250);
+                };
+                
+                img.onerror = () => {
+                    // Bild nicht gefunden, ignorieren
+                };
+                
+                img.src = 'Hintergrund.png';
+            }
+
+            // Vordergrundbild laden
+            loadForegroundImage() {
+                const canvas = document.getElementById('foregroundCanvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = 0.7;  // Hier die Transparenz ändern (0.0 - 1.0)
+                    ctx.drawImage(img, 0, 0, 250, 250);
+                };
+                
+                img.onerror = () => {
+                    // Bild nicht gefunden, ignorieren
+                };
+                
+                img.src = 'Vordergrund.png';
+            }
+        }
+
+        // Globale Funktionen
+        let game;
+
+        function takeBalls(count) {
+            game.takeBalls(count);
+        }
+
+        function resetGame() {
+            game.resetGame();
+        }
+
+        function toggleSound() {
+            game.toggleSound();
+        }
+
+        function showRules() {
+            document.getElementById('rulesModal').style.display = 'block';
+        }
+
+        function closeRules() {
+            document.getElementById('rulesModal').style.display = 'none';
+        }
+
+        // Modal schließen wenn außerhalb geklickt wird
+        window.onclick = function(event) {
+            const modal = document.getElementById('rulesModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Spiel starten
+        window.onload = () => {
+            game = new NimmGame();
+        };
+    </script>
+</body>
+</html>
