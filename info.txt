@@ -1,0 +1,24 @@
+Nimm-Spiel: Fordere eine lernende KI heraus!
+
+Das Nimm-Spiel ist ein spannendes Strategiespiel, bei dem Du gegen eine intelligente KI antrittst. Das Ziel ist es, den Gegner dazu zu zwingen, die letzte Kugel zu nehmen.
+
+So wird gespielt:
+
+- Das Spiel beginnt mit 31 Kugeln.
+- Du und die KI wechselt euch ab, Kugeln vom Stapel zu nehmen.
+- Pro Zug kannst Du 1, 2 oder 3 Kugeln nehmen.
+- Wer die letzte Kugel nehmen muss, verliert!
+
+Strategie und Lernfähigkeit der KI:
+Die besondere Herausforderung dieses Spiels liegt in der KI, die aus jedem Spiel lernt. Anfangs agiert sie noch zufällig, aber mit jeder gespielten Partie wird sie besser und entwickelt eigene, ausgeklügelte Strategien. Du kannst den Lernfortschritt der KI anhand des angezeigten "KI Levels" verfolgen, das von "Anfänger" bis "Experte" reicht. Ein Tipp, um die KI zu schlagen: Versuche, ihr immer ein Vielfaches von 4 Kugeln zu hinterlassen (4, 8, 12, 16, 20, 24, 28).
+
+Features des Spiels:
+
+- Interaktive Benutzeroberfläche mit Anzeige der verbleibenden Kugeln und des aktuellen Spielers.
+- Visuelle Darstellung der Kugeln, die bei jedem Zug animiert entfernt werden.
+- Option zur Aktivierung/Deaktivierung von Soundeffekten.
+- Statistiken über Deine und die Siege der KI sowie die gespielten Partien.
+- Eine jederzeit abrufbare Erklärung der Regeln und einen Strategie-Tipp.
+- Eine dynamische Anzeige, ob die KI gerade lernt.
+
+Fordere die lernende KI heraus und finde heraus, ob Du sie überlisten kannst!
